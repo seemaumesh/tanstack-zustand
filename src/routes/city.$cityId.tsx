@@ -11,7 +11,7 @@ export const Route = createFileRoute('/city/$cityId')({
   component: CityPage,
 })
 
-function CityPage() {
+export function CityPage() {
   const { cityId } = Route.useParams()
   const city = CITIES.find((c) => c.id === cityId)
   const { toggleFavourite, isFavourite } = useWeatherStore()
@@ -33,7 +33,7 @@ function CityPage() {
     source.onerror = () => source.close()
 
     return () => source.close()
-  }, [cityId, refetch])
+  }, [cityId])
 
   if (!city) {
     return (
