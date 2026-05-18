@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 import { CITIES } from '../data/cities'
 import { weatherQueryOptions } from '../api/weather'
 import { useWeatherStore } from '../store/weatherStore'
@@ -19,6 +20,20 @@ function CityPage() {
     ...weatherQueryOptions(city!),
     enabled: !!city,
   })
+
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false)
+
+  useEffect(() => {
+    const source = new EventSource(`/api/weather-stream/${cityId}`)
+
+    source.addEventListener('updated', () => {
+      setShowUpdateBanner(true)
+    })
+
+    source.onerror = () => source.close()
+
+    return () => source.close()
+  }, [cityId, refetch])
 
   if (!city) {
     return (
@@ -46,6 +61,28 @@ function CityPage() {
 
   return (
     <div className="space-y-6">
+      {showUpdateBanner && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-sky-600 text-white text-sm px-4 py-2 rounded-full shadow-lg">
+          <span>Weather update available</span>
+          <button
+            onClick={() => {
+              refetch()
+              setShowUpdateBanner(false)
+            }}
+            className="underline font-medium cursor-pointer bg-transparent border-0 text-white"
+          >
+            Refresh
+          </button>
+          <button
+            onClick={() => setShowUpdateBanner(false)}
+            className="opacity-70 hover:opacity-100 cursor-pointer bg-transparent border-0 text-white"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <Link to="/" className="text-sky-600 hover:text-sky-700 text-sm inline-flex items-center gap-1">
         Back to all cities
       </Link>
