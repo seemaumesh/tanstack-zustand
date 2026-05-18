@@ -22,17 +22,46 @@ export function CityPage() {
   })
 
   const [showUpdateBanner, setShowUpdateBanner] = useState(false)
+  const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
 
   useEffect(() => {
-    const source = new EventSource(`/api/weather-stream/${cityId}`)
+    let source: EventSource
+    let retryDelay = 1_000
+    let timeoutId: ReturnType<typeof setTimeout>
+    let cancelled = false
 
-    source.addEventListener('updated', () => {
-      setShowUpdateBanner(true)
-    })
+    const connect = () => {
+      source = new EventSource(`/api/weather-stream/${cityId}`)
+      setConnectionState('connecting')
 
-    source.onerror = () => source.close()
+      source.addEventListener('connected', () => {
+        setConnectionState('connected')
+        retryDelay = 1_000 // reset backoff on successful connection
+      })
 
-    return () => source.close()
+      source.addEventListener('updated', () => {
+        setShowUpdateBanner(true)
+      })
+
+      source.onerror = () => {
+        source.close()
+        setConnectionState('disconnected')
+        if (!cancelled) {
+          timeoutId = setTimeout(() => {
+            retryDelay = Math.min(retryDelay * 2, 30_000)
+            connect()
+          }, retryDelay)
+        }
+      }
+    }
+
+    connect()
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+      source?.close()
+    }
   }, [cityId])
 
   if (!city) {
@@ -83,9 +112,19 @@ export function CityPage() {
         </div>
       )}
 
-      <Link to="/" className="text-sky-600 hover:text-sky-700 text-sm inline-flex items-center gap-1">
-        Back to all cities
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/" className="text-sky-600 hover:text-sky-700 text-sm inline-flex items-center gap-1">
+          Back to all cities
+        </Link>
+        <span className={`text-xs flex items-center gap-1 ${
+          connectionState === 'connected' ? 'text-green-500' :
+          connectionState === 'disconnected' ? 'text-red-400' : 'text-slate-400'
+        }`}>
+          ●{' '}
+          {connectionState === 'connected' ? 'Live' :
+           connectionState === 'disconnected' ? 'Reconnecting…' : 'Connecting…'}
+        </span>
+      </div>
 
       <div className="bg-gradient-to-br from-sky-500 to-sky-700 text-white rounded-2xl p-6 shadow-md">
         <div className="flex items-start justify-between">

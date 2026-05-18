@@ -63,9 +63,14 @@ function weatherSsePlugin(): Plugin {
 
           send('connected', { cityId })
           await poll()
-          const intervalId = setInterval(poll, POLL_INTERVAL_MS)
 
-          req.on('close', () => clearInterval(intervalId))
+          let timeoutId: ReturnType<typeof setTimeout>
+          const schedule = () => {
+            timeoutId = setTimeout(() => poll().finally(schedule), POLL_INTERVAL_MS)
+          }
+          schedule()
+
+          req.on('close', () => clearTimeout(timeoutId))
         },
       )
     },

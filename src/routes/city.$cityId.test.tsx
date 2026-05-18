@@ -110,13 +110,9 @@ describe('CityPage SSE banner', () => {
   })
 
   it('EventSource is closed when component unmounts', () => {
-    render(<CityPage />)
+    const { unmount } = render(<CityPage />)
     const closeSpy = vi.spyOn(MockEventSource.current!, 'close')
-    // The component returned by render has an `unmount` method
-    // Trigger cleanup by re-rendering nothing — use a different approach via the cleanup
-    act(() => {
-      MockEventSource.current?.close()
-    })
+    act(() => unmount())
     expect(closeSpy).toHaveBeenCalled()
   })
 })
